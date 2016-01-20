@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-docker run -it tmcphillips/kurator-dev-openjdk7
+docker run -it kurator/cli-dev:openjdk7
