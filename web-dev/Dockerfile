@@ -26,7 +26,12 @@ USER  kurator
 WORKDIR  /home/kurator
 
 # set up user's development environment and perform initial builds
-RUN echo '***** Clone kurator git repositories *****'                                                               \
+RUN echo '***** Clone and build kurator-akka *****'                                                             \
+    && git clone https://github.com/kurator-org/kurator-akka.git                                                \
+    && cd ~/kurator-akka                                                                                        \
+    && mvn install
+
+RUN echo '***** Clone and build kurator-web *****'                                                               \
     && git clone https://github.com/kurator-org/kurator-web.git                                                     \
                                                                                                                     \
     && echo '***** Build, test, package, and install code artifacts *****'                                          \
