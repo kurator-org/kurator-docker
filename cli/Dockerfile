@@ -1,46 +1,28 @@
 
-# start from a debian image with Java 7 and git preinstalled
-FROM  java:7
-
-# install packages 
-RUN echo '***** Update packages *****'                                                                              \
-    && apt-get -y update                                                                                            \
-                                                                                                                    \
-    && echo '***** Install packages REQUIRED for creating this image *****'                                         \
-    && apt-get -y install curl makepasswd                                                                           \
-                                                                                                                    \
-    && echo '***** Install packages NOT required to build and run kurator tools *****'                              \
-    && apt-get -y install sudo apt-utils man less file tree vim emacs
-                  
-# create an unprivileged user
-RUN echo '***** Create the kurator user *****'                                                                      \
-    && useradd kurator --gid sudo                                                                                   \
-                       --shell /bin/bash                                                                            \
-                       --create-home                                                                                \
-                       --password `echo kurator | makepasswd --crypt-md5 --clearfrom - | cut -b11-`
+FROM kurator/base:0.3.1
 
 # perform remaining commands as the user and within the user's home directory
-USER  kurator
-WORKDIR  /home/kurator
+USER kurator
+WORKDIR /home/kurator
+
+# Kurator-Validation version
+ENV KV_VERSION=0.3
+
+# Variables defining URL to kurator-validation jar
+ENV NEXUS_SERVICE=https://opensource.ncsa.illinois.edu/nexus/service
+ENV SNAPSHOT_REPO=$NEXUS_SERVICE/local/repositories/snapshots/content
+ENV KV_SNAPSHOTS=$SNAPSHOT_REPO/org/kurator/kurator-validation/$KV_VERSION-SNAPSHOT
+ENV KV_SNAPSHOT_NAME=kurator-validation-$KV_VERSION-20160323.044806-1-jar-with-dependencies.jar
+ENV KV_JAR_URL=$KV_SNAPSHOTS/$KV_SNAPSHOT_NAME
+ENV KURATOR_VALIDATION_JAR=/home/kurator/bin/kurator-validation-$KV_VERSION.jar
 
 # set up user's development environment and perform initial builds
-RUN echo '***** Download, install, and configure jython 2.7.0 *****'                                                \
-    && curl -O http://central.maven.org/maven2/org/python/jython-installer/2.7.0/jython-installer-2.7.0.jar         \
-    && java -jar jython-installer-2.7.0.jar -s -d ~/jython-2.7.0                                                    \
-    && rm jython-installer-2.7.0.jar                                                                                \
-                                                                                                                    \
-    && echo '***** Use jython pip to install python packages required by kurator *****'                             \
-    && ~/jython-2.7.0/bin/pip install suds-jurko                                                                    \
-                                                                                                                    \
-    && echo '***** Download kurator-validation executable jar *****'                                                \
-    && mkdir ~/bin                                                                                                  \
-    && curl -o ~/bin/kurator-validation.jar https://opensource.ncsa.illinois.edu/bamboo/browse/KURATOR-AKKA-317/artifact/KUW/executable-jar/kurator-validation-0.3-SNAPSHOT-jar-with-dependencies.jar \
+RUN echo '***** Download kurator-validation executable jar *****'              \
+ && mkdir ~/bin                                                                \
+ && curl -o $KURATOR_VALIDATION_JAR $KV_JAR_URL
 
-    && echo '***** Add environment variable definitions to .bashrc *****'                                           \
-    && echo 'export PATH=/home/kurator/jython-2.7.0/bin/:$PATH'     >> ~/.bashrc                                    \
-    && echo 'export JYTHON_HOME=/home/kurator/jython-2.7.0'         >> ~/.bashrc                                    \
-    && echo 'export PATH=/home/kurator/bin/:$PATH'                  >> ~/.bashrc                                    \
-    && echo "alias ka='java -jar ~/bin/kurator-validation.jar'"     >> ~/.bash_aliases
+RUN echo '***** Create an alias for running Kurator-Akka *****'                \
+ && echo "alias ka='java -jar $KURATOR_VALIDATION_JAR'" >> ~/.bash_aliases
 
 # start an interactive bash login shell when the image is run
-CMD  /bin/bash -il
+CMD /bin/bash -il

@@ -1,53 +1,26 @@
+FROM kurator/base:0.3.1
 
-# start from a debian image with Java 7 and git preinstalled
-FROM  java:7                                                     
+RUN echo '***** Install packages required to build and run Kurator *****'      \
+ && apt-get -y install maven
 
-# set up Linux system environment 
-RUN echo '***** Update packages *****'                                                                          \
-    && apt-get -y update                                                                                        \
-                                                                                                                \
-    && echo '***** Install packages REQUIRED for creating this image *****'                                     \
-    && apt-get -y install curl makepasswd                                                                       \
-                                                                                                                \
-    && echo '***** `# Install packages REQUIRED to build and run kurator tools *****'                           \
-    && apt-get -y install maven                                                                                 \
-                                                                                                                \
-    && echo '***** Install packages NOT required to build and run kurator tools *****'                          \
-    && apt-get -y install sudo apt-utils man less file tree vim emacs
-                  
-# create an unprivileged user
-RUN echo '***** Create the kurator user *****'                                                                  \
-    && useradd kurator --gid sudo                                                                               \
-                       --shell /bin/bash                                                                        \
-                       --create-home                                                                            \
-                       --password `echo kurator | makepasswd --crypt-md5 --clearfrom - | cut -b11-`
-
-# perform remaining commands as the user and within the user's home directory
 USER  kurator
 WORKDIR  /home/kurator
 
-# clone and do first build of core kurator-akka system
-RUN echo '***** Clone and build kurator-akka *****'                                                             \
-    && git clone https://github.com/kurator-org/kurator-akka.git                                                \
-    && cd ~/kurator-akka                                                                                        \
-    && mvn install
+RUN echo '***** Clone  kurator-akka repo and build *****'                      \
+ && git clone https://github.com/kurator-org/kurator-akka.git                  \
+ && cd ~/kurator-akka                                                          \
+ && mvn install
 
-# Install jython and required Python packages
-RUN echo '***** Download and install jython 2.7.0 *****'                                                        \
-    && curl -O http://central.maven.org/maven2/org/python/jython-installer/2.7.0/jython-installer-2.7.0.jar     \
-    && java -jar jython-installer-2.7.0.jar -s -d ~/jython-2.7.0                                                \
-    && rm jython-installer-2.7.0.jar                                                                            \
-    && echo "export JYTHON_HOME=/home/kurator/jython-2.7.0"       >> ~/.bashrc                                  \
-    && echo "export PATH=/home/kurator/jython-2.7.0/bin/:$PATH"   >> ~/.bashrc                                  \
-                                                                                                                \
-    && echo '***** Use jython pip to install python packages required by kurator *****'                         \
-    && ~/jython-2.7.0/bin/pip install suds-jurko
-    
-# Clone and do first build of kurator-validation
-RUN git clone https://github.com/kurator-org/kurator-validation.git                                             \
-    && export JYTHON_HOME=/home/kurator/jython-2.7.0                                                            \
-    && cd ~/kurator-validation                                                                                  \
-    && mvn package
+RUN echo '***** Clone kurator-validation repo and builc *****'                 \
+ && git clone https://github.com/kurator-org/kurator-validation.git            \
+ && cd ~/kurator-validation                                                    \
+ && mvn install
+
+ENV KA_JAR_DIR  /home/kurator/kurator-validation/target
+ENV KA_JAR_NAME kurator-validation-0.3-SNAPSHOT-jar-with-dependencies.jar
+
+RUN echo '***** Create an alias for running Kurator *****'                     \
+ && echo "alias ka='java -jar $KA_JAR_DIR/$KA_JAR_NAME'"  >> ~/.bash_aliases
 
 # start an interactive bash login shell when the image is run
 CMD  /bin/bash -il

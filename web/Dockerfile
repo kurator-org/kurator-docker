@@ -18,6 +18,8 @@ RUN echo '***** Update packages *****'                                          
                        --create-home                                                                                \
                        --password `echo kurator | makepasswd --crypt-md5 --clearfrom - | cut -b11-`
 
+EXPOSE 9000
+
 # perform remaining commands as the user and within the user's home directory
 USER  kurator
 WORKDIR  /home/kurator
