@@ -9,6 +9,9 @@ RUN echo '***** Update packages *****'                                          
     && echo '***** Install packages REQUIRED for creating this image *****'                                         \
     && apt-get -y install curl makepasswd                                                                           \
                                                                                                                     \
+    && echo '***** `# Install packages REQUIRED to build and run kurator tools *****'                               \
+    && apt-get -y install maven git                                                                                 \
+                                                                                                                    \
     && echo '***** Install packages NOT required to build and run kurator tools *****'                              \
     && apt-get -y install sudo apt-utils man less tree vim emacs                                                    \
                                                                                                                     \
@@ -25,12 +28,30 @@ USER  kurator
 WORKDIR  /home/kurator
 
 # set up user's development environment and perform initial builds
-RUN echo '***** Download kurator-web zip archive *****'                                                             \
-    && curl -o ~/kurator-web.zip https://opensource.ncsa.illinois.edu/bamboo/browse/KURATOR-AKKA-317/artifact/WEB/distribution-archive/kurator-web-0.1-SNAPSHOT-dist.zip \
-    && unzip kurator-web.zip                                                                                        \
-    && cd kurator-web-0.1-SNAPSHOT                                                                                  \
-    && chmod +x start 
- 
+RUN echo '***** Download kurator-web zip archive *****' \
+    && wget https://github.com/kurator-org/kurator-web/releases/download/v1.0.1/kurator-web-1.0.1.zip
+
+RUN echo '***** Install Jython 2.7.1b3 *****' \
+    && unzip kurator-web-1.0.1.zip \
+    && cd kurator-web-1.0.1/lib \
+    && java -jar jython-installer-2.7.1b3.jar -s -d ../jython
+
+RUN echo '***** Pip install workflow dependencies *****' \
+    && cd kurator-web-1.0.1/jython/bin \
+    && ./pip install python-dwca-reader \
+    && ./pip install py \
+    && ./pip install unicodecsv \
+    && ./pip install unidecode \
+    && ./pip install chardet
+
+RUN echo '***** Clone kurator-validation workflows project *****' \
+    && git clone https://github.com/kurator-org/kurator-validation.git \
+    && cd kurator-web-1.0.1 \
+    && ln -s ../kurator-validation/packages/ packages
+
 # start an interactive bash login shell when the image is run
 CMD  /bin/bash -il
 
+CMD echo '***** Start kurator-web *****' \
+    && cd kurator-web-1.0.1 \
+    && bin/kurator-web
