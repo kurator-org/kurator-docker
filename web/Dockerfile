@@ -54,4 +54,4 @@ CMD  /bin/bash -il
 
 CMD echo '***** Start kurator-web *****' \
     && cd kurator-web-1.0.1 \
-    && bin/kurator-web
+    && bin/kurator-web -Dhttp.address=0.0.0.0
