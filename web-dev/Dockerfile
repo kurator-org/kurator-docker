@@ -12,7 +12,7 @@ RUN echo '***** Update packages *****'                                          
     && echo '***** `# Install packages REQUIRED to build and run kurator tools *****'                               \
     && apt-get -y install maven git                                                                                 \
                                                                                                                     \                          
-    && echo '***** `# Remove the oracle-java7 package as the deault in favor of java8 *****'                        \
+    && echo '***** `# Remove the oracle-java7 package as the default in favor of java8 *****'                       \
     && update-java-alternatives -s java-1.8.0-openjdk-amd64                                                         \
                                                                                                                     \
     && echo '***** Install packages NOT required to build and run kurator tools *****'                              \
@@ -30,6 +30,10 @@ RUN echo '***** Update packages *****'                                          
     && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 
+# RUN echo '***** Install mysql server and create kurator database and user for kurator-web *****'                    \
+#     && DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server
+
+
 EXPOSE 9000
 
 # perform remaining commands as the user and within the user's home directory
@@ -40,6 +44,11 @@ WORKDIR  /home/kurator
 RUN echo '***** Set up environment *****' \
     && mkdir projects \
     && mkdir deployments
+
+# RUN echo '***** Create the kurator database and user in MySQL *****' \
+#     && sudo service mysql start \
+#     && mysql -u root -e "CREATE DATABASE kurator"                                                                   \
+#     && mysql -u root -e "GRANT ALL PRIVILEGES ON kurator.* TO 'kurator'@'localhost' IDENTIFIED BY 'password';"
 
 RUN echo '***** Clone and build ffdq-api and kurator-ffdq projects *****' \
     && cd projects \
