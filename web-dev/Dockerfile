@@ -11,6 +11,9 @@ RUN echo '***** Update packages *****'                                          
                                                                                                                     \
     && echo '***** `# Install packages REQUIRED to build and run kurator tools *****'                               \
     && apt-get -y install maven git                                                                                 \
+                                                                                                                    \                          
+    && echo '***** `# Remove the oracle-java7 package as the deault in favor of java8 *****'                        \
+    && update-java-alternatives -s java-1.8.0-openjdk-amd64                                                         \
                                                                                                                     \
     && echo '***** Install packages NOT required to build and run kurator tools *****'                              \
     && apt-get -y install sudo apt-utils man less tree vim emacs                                                    \
@@ -22,7 +25,10 @@ RUN echo '***** Update packages *****'                                          
     && useradd kurator --gid sudo                                                                                   \
                        --shell /bin/bash                                                                            \
                        --create-home                                                                                \
-                       --password `echo kurator | makepasswd --crypt-md5 --clearfrom - | cut -b11-`
+                       --password `echo kurator | makepasswd --crypt-md5 --clearfrom - | cut -b11-`                 \
+                                                                                                                    \
+    && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
 
 EXPOSE 9000
 
@@ -33,55 +39,56 @@ WORKDIR  /home/kurator
 # set up user's development environment and perform initial builds
 RUN echo '***** Set up environment *****' \
     && mkdir projects \
-    && mkdir deployments \
-    && cd projects
+    && mkdir deployments
 
 RUN echo '***** Clone and build ffdq-api and kurator-ffdq projects *****' \
+    && cd projects \
     && git clone https://github.com/kurator-org/ffdq-api.git \
     && cd ffdq-api \
-    && mvn clean install \
+    && mvn clean install -DskipTests \
     && cd .. \
     && git clone https://github.com/kurator-org/kurator-ffdq.git \
     && cd kurator-ffdq \
-    && mvn clean install \
-    && cd ..
+    && mvn clean install -DskipTests
 
 RUN echo '***** Clone and build event_date_qc and geo_ref_qc projects *****' \
+    && cd projects \
     && git clone https://github.com/FilteredPush/event_date_qc.git \
     && cd event_date_qc \
-    && mvn clean install \
+    && mvn clean install -DskipTests \
     && cd .. \
     && git clone https://github.com/FilteredPush/geo_ref_qc.git \
     && cd geo_ref_qc \
-    && mvn clean install \
-    && cd ..
+    && mvn clean install -DskipTests
 
 RUN echo '***** Clone and build kurator-akka project *****' \
+    && cd projects \
     && git clone https://github.com/kurator-org/kurator-akka.git \
     && cd kurator-akka \
-    && mvn clean install \
-    && cd ..
+    && mvn clean install -DskipTests
 
 RUN echo '***** Clone and build kurator-validation workflows project *****' \
+    && cd projects \
     && git clone https://github.com/kurator-org/kurator-validation.git \
     && cd kurator-validation \
-    && mvn clean install \
+    && mvn clean install -DskipTests 
 
 RUN echo '***** Pip install workflow dependencies *****' \
-    && cd packages\kurator-dwca \
-    && ./pip install -r requirements.txt \
-    && cd ../..
+    && cd projects \
+    && cd kurator-validation/packages/kurator_dwca \
+    && sudo pip install -r requirements.txt
 
 RUN echo '***** Clone and build kurator-web project *****' \
+    && cd projects \
     && git clone https://github.com/kurator-org/kurator-web.git \
     && cd kurator-web \
     && cp conf/application.conf.example conf/application.conf \
-    && bin/activator dist \
+    && bin/activator clean compile dist 
 
 RUN echo '***** Deploy the kurator-web project *****' \
-    && cp target/universal/kurator-web-1.0.2-SNAPSHOT.zip ../../deployments/kurator-web.zip \
-    && cd ../../deployments \
-    && unzip kurator-web.zip \
+    && unzip projects/kurator-web/target/universal/kurator-web-1.0.2-SNAPSHOT.zip -d deployments \
+    && cd deployments \
+    && ln -s kurator-web-1.0.2-SNAPSHOT kurator-web \
     && cd kurator-web \
     && ln -s /home/kurator/projects/kurator-validation/packages packages
 
@@ -89,5 +96,5 @@ RUN echo '***** Deploy the kurator-web project *****' \
 CMD  /bin/bash -il
 
 CMD echo '***** Start kurator-web *****' \
-    && cd deployments\kurator-web \
+    && cd deployments/kurator-web \
     && bin/kurator-web -Dhttp.address=0.0.0.0 -Dkurator.jar=/home/kurator/projects/kurator-validation/target/kurator-validation-1.0.2-SNAPSHOT-jar-with-dependencies.jar
