@@ -1,0 +1,1 @@
+java -jar target/kurator-validation-1.0.2-SNAPSHOT-jar-with-dependencies.jar -f packages/kurator_FileBranchingTaxonLookup/workflows/file_branching_taxon_lookup.yaml -p inputfile=packages/kurator_FileBranchingTaxonLookup/data/kurator_sample_data_v2.txt -l ALL > runlog.log 2>&1
