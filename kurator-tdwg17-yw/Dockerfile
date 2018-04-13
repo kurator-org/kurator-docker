@@ -66,24 +66,21 @@ RUN echo '***** Create the yw user *****'                                       
                  --password `echo yeswf | makepasswd --crypt-md5 --clearfrom - | cut -b11-`
 
 # perform remaining commands as the user and within the user's home directory
-WORKDIR  /home/yw
+WORKDIR /home/kurator/kurator-validation
 
 # set up user's run-time environment
 
 RUN echo '***** Download yw-prototypes executable jar, expand examples, and create alias *****'                 \
-    && mkdir ~/bin                                                                                              \
-    && curl -L -o ~/bin/yw.jar https://github.com/yesworkflow-org/yw-prototypes/releases/download/v0.2.1.2/yesworkflow-0.2.1.2-jar-with-dependencies.jar\ 
-
-    && cd /home/yw; jar -xvvf ~/bin/yw.jar examples                                                             \
-    && echo "alias yw='java -jar ~/bin/yw.jar'"  >> ~/.bash_aliases
+    && mkdir /home/kurator/kurator-validation/yw_jar  \
+    && curl -L -o /home/kurator/kurator-validation/yw_jar/yesworkflow-0.2.1.2-jar-with-dependencies.jar https://github.com/yesworkflow-org/yw-prototypes/releases/download/v0.2.1.2/yesworkflow-0.2.1.2-jar-with-dependencies.jar
 
 RUN echo '***** Download and build XSB 3.8 *****'                                                               \
-    && svn checkout svn://svn.code.sf.net/p/xsb/src/trunk xsb-src \
-    && cd xsb-src/XSB/build                                                                                         \
+    && svn checkout svn://svn.code.sf.net/p/xsb/src/trunk /home/xsb-src \
+    && cd /home/xsb-src/XSB/build                                                                                         \
     && ./configure                                                                                              \
     && ./makexsb                                                                                                \
     && cd                                                                                                       \
-    && echo 'export PATH="/home/yw/xsb-src/XSB/bin:$PATH"' >> .bashrc
+    && echo 'export PATH="/home/xsb-src/XSB/bin:$PATH"' >> .bashrc
     
 
 # start an interactive bash login shell when the image is run
