@@ -1,14 +1,59 @@
-FROM  kurator/cli-dev:0.3.1
+# start from a debian image with Java 8 and git preinstalled
+FROM  java:8                                                    
 
-USER root 
+ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
+
+RUN echo '***** make Java 8 the default for java and javac commands *****'                       \
+ && update-alternatives --set java  $JAVA_HOME/jre/bin/java               \
+ && update-alternatives --set javac $JAVA_HOME/bin/javac
+
+# set up Linux system environment 
+RUN echo '***** Update packages *****'                                                       \
+ && apt-get -y update                                                                            \
+ && echo '***** Install packages REQUIRED for creating this image *****'                         \
+ && apt-get -y install curl libcurl4-gnutls-dev makepasswd gcc make                                                 \
+ && echo '***** `# Install packages REQUIRED to build and run kurator tools *****'                               \
+ && apt-get -y install maven git python python-pip python-dev r-base                                             \
+ && echo '***** Install packages NOT required to build and run kurator tools *****'              \
+ && apt-get -y install man less file tree vim emacs \
+ && echo '***** Install packages required by YesWorkflow *****'                                              \
+ && apt-get -y install graphviz    \
+ && apt-get clean
+ # clean up the apt cache after apt-get update 
+
+RUN echo '***** Create the kurator user *****'                                                   \
+ && useradd kurator --gid sudo                                                                   \
+                    --shell /bin/bash                                                            \
+                    --create-home                                                                \
+                    --password `echo kurator | makepasswd --crypt-md5 --clearfrom - | cut -b11-` \
+ && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+USER kurator 
+WORKDIR  /home/kurator
+
+# set up user's development environment and perform initial builds
+RUN echo '***** Set up environment *****' \
+    && mkdir kurator \
+    && cd /home/kurator
+
+RUN echo '***** Clone  kurator-akka repo and build *****'                      \
+ && git clone https://github.com/kurator-org/kurator-akka.git                  \
+ && cd kurator-akka                                                          \
+ && mvn install
+
+RUN echo '***** Clone kurator-validation repo and builc *****'                 \
+ && git clone https://github.com/kurator-org/kurator-validation.git            \
+ && cd kurator-validation                                                    \
+ && mvn install
+
 RUN echo '***** Clone kurator-TDWG17-YW workflows project *****' \
-     && cd /home/kurator/kurator-validation \
+     && cd kurator-validation \
      && git clone https://github.com/kurator-org/kurator-TDWG17-YW.git \
      && cp -r kurator-TDWG17-YW/queries .\
      && cp -r kurator-TDWG17-YW/rules .\
      && cp  kurator-TDWG17-YW/*.sh .\
-     && cp kurator-TDWG17-YW/*.properties .\
-     && cp -r kurator-TDWG17-YW/kurator_FileBranchingTaxonLookup ./packages/
+     && cp kurator-TDWG17-YW/*.properties .
+     # && cp -r kurator-TDWG17-YW/kurator_FileBranchingTaxonLookup ./packages/
 
 # The version of Jython to use
 ENV JYTHON_VERSION 2.7.1b3
@@ -30,11 +75,11 @@ RUN echo '***** Download and install Jython *****'                             \
                                                                                \
     && echo '***** Put jython and pip commands in PATH *****'                  \
     && echo "export PATH=$JYTHON_BIN:$PATH" >> ~/.bashrc                       \
-                                                                               \
     && echo '***** Use pip to install python packages used by Kurator *****'   \
     && $JYTHON_BIN/pip install suds-jurko 
 
-RUN echo '***** Pip install workflow dependencies *****' \
+
+RUN echo '***** Pip install workflow dependencies *****' \ 
     && $JYTHON_BIN/pip install requests                                        \
     && $JYTHON_BIN/pip install python-dwca-reader                              \
     && $JYTHON_BIN/pip install py                                              \
@@ -44,44 +89,23 @@ RUN echo '***** Pip install workflow dependencies *****' \
 ENV JYTHONPATH $HOME/kurator-validation/packages:$HOME/kurator-akka/packages
 
 
-RUN echo '***** Update packages *****'                                                                          \
-    && apt-get -y update                                                                                        \
-                                                                                                                \
-    && echo '***** Install packages REQUIRED for creating this image *****'                                     \
-    && apt-get -y install curl makepasswd gcc make                                                              \
-                                                                                                                \
-    && echo '***** Install packages required by YesWorkflow *****'                                              \
-    && apt-get -y install graphviz                                                                              \
-                                                                                                                \
-    && echo '***** Install packages NOT required to run yesworkflow *****'                                      \
-    && apt-get -y install sudo apt-utils man less file tree vim emacs                                           \
-    && apt-get clean
-    # clean up the apt cache after apt-get update 
-                  
-# create an unprivileged user
-RUN echo '***** Create the yw user *****'                                                                       \
-    && useradd yw --gid sudo                                                                                    \
-                 --shell /bin/bash                                                                              \
-                 --create-home                                                                                  \
-                 --password `echo yeswf | makepasswd --crypt-md5 --clearfrom - | cut -b11-`
-
-# perform remaining commands as the user and within the user's home directory
-WORKDIR /home/kurator/kurator-validation
 
 # set up user's run-time environment
-
 RUN echo '***** Download yw-prototypes executable jar, expand examples, and create alias *****'                 \
     && mkdir /home/kurator/kurator-validation/yw_jar  \
     && curl -L -o /home/kurator/kurator-validation/yw_jar/yesworkflow-0.2.1.2-jar-with-dependencies.jar https://github.com/yesworkflow-org/yw-prototypes/releases/download/v0.2.1.2/yesworkflow-0.2.1.2-jar-with-dependencies.jar
 
 RUN echo '***** Download and build XSB 3.8 *****'                                                               \
-    && svn checkout svn://svn.code.sf.net/p/xsb/src/trunk /home/xsb-src \
-    && cd /home/xsb-src/XSB/build                                                                                         \
+    && mkdir /home/kurator/xsb-src \
+    && wget -qO- https://sourceforge.net/projects/xsb/files/xsb/3.8%20Three-Buck%20Chuck/XSB38.tar.gz/download | tar xvz -C /home/kurator/xsb-src/  \
+    && cd /home/kurator/xsb-src/XSB/build                                                                                         \
     && ./configure                                                                                              \
     && ./makexsb                                                                                                \
     && cd                                                                                                       \
-    && echo 'export PATH="/home/xsb-src/XSB/bin:$PATH"' >> .bashrc
+    && echo 'export PATH="/home/kurator/xsb-src/XSB/bin:$PATH"' >> .bashrc
     
+
+WORKDIR /home/kurator/kurator-validation
 
 # start an interactive bash login shell when the image is run
 CMD  /bin/bash -il
