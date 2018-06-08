@@ -44,7 +44,11 @@ RUN echo '***** Clone  kurator-akka repo and build *****'                      \
 RUN echo '***** Clone kurator-validation repo and builc *****'                 \
  && git clone https://github.com/kurator-org/kurator-validation.git            \
  && cd kurator-validation                                                    \
- && mvn install
+ && mkdir target                                                             \
+ && cd target/                                                               \
+ && wget https://github.com/kurator-org/kurator-validation/releases/download/v1.0.2/kurator-validation-1.0.2-jar-with-dependencies.jar 
+
+ # && mvn install
 
 RUN echo '***** Clone kurator-TDWG17-YW workflows project *****' \
      && cd kurator-validation \
